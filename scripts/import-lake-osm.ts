@@ -18,9 +18,11 @@ const inputPath = process.argv[2] ?? '/tmp/okanagan-osm.json'
 const outPath = join(root, 'public/data/okanagan-lake.geojson')
 
 const zones = [
-  { id: 'kelowna-waterfront', lat: 49.888, lon: -119.504 },
-  { id: 'bennett-bridge', lat: 49.875, lon: -119.52 },
   { id: 'south-arm-elbow', lat: 49.82, lon: -119.55 },
+  { id: 'bennett-bridge', lat: 49.875, lon: -119.52 },
+  { id: 'kelowna-waterfront', lat: 49.888, lon: -119.504 },
+  { id: 'poplar-point-bay', lat: 49.915, lon: -119.495 },
+  { id: 'mckinley-landing', lat: 49.961, lon: -119.468 },
 ]
 
 function main() {

@@ -18,10 +18,11 @@ const STEP = 360 / BIN_COUNT
 const MAX_RAY_KM = 80
 
 const zones = [
-  // East-shore downtown Kelowna (on water, near waterfront parks)
-  { id: 'kelowna-waterfront', name: 'Kelowna Waterfront', lat: 49.888, lon: -119.504 },
-  { id: 'bennett-bridge', name: 'W.R. Bennett Bridge', lat: 49.875, lon: -119.52 },
   { id: 'south-arm-elbow', name: 'South Arm / Elbow', lat: 49.82, lon: -119.55 },
+  { id: 'bennett-bridge', name: 'W.R. Bennett Bridge', lat: 49.875, lon: -119.52 },
+  { id: 'kelowna-waterfront', name: 'Kelowna Waterfront', lat: 49.888, lon: -119.504 },
+  { id: 'poplar-point-bay', name: 'Poplar Point Bay', lat: 49.915, lon: -119.495 },
+  { id: 'mckinley-landing', name: 'McKinley Landing', lat: 49.961, lon: -119.468 },
 ]
 
 function loadLakePolygon(): Feature<Polygon | MultiPolygon> {

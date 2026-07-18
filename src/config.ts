@@ -80,6 +80,20 @@ export const zones: Zone[] = [
     lat: 49.888,
     lon: -119.504,
   },
+  {
+    id: 'poplar-point-bay',
+    name: 'Poplar Point Bay',
+    description: 'Little bay just NW of downtown waterfront',
+    lat: 49.915,
+    lon: -119.495,
+  },
+  {
+    id: 'mckinley-landing',
+    name: 'McKinley Landing',
+    description: 'East shore north of town — longer N–S fetch',
+    lat: 49.961,
+    lon: -119.468,
+  },
 ]
 
 export const defaultZoneId = 'south-arm-elbow'
