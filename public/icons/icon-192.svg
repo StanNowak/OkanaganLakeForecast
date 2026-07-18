@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="36" fill="#0B1D33"/>
+  <path d="M16 116c28-18 56-18 84 0s56 18 84 0v52H16v-52z" fill="#3D6B7A"/>
+  <path d="M16 132c28-16 56-16 84 0s56 16 84 0v36H16v-36z" fill="#B8956C"/>
+  <text x="96" y="88" text-anchor="middle" font-family="Arial Black, Helvetica, sans-serif" font-size="42" fill="#F3EBD8" letter-spacing="2">GLASS</text>
+  <circle cx="152" cy="44" r="11" fill="#C8102E"/>
+</svg>
