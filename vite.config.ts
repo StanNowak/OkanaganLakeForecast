@@ -72,12 +72,12 @@ export default defineConfig({
             },
           },
           {
-            urlPattern: /^https:\/\/tile\.openstreetmap\.org\/.*/i,
+            urlPattern: /^https:\/\/tiles\.openfreemap\.org\/.*/i,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'osm-tiles',
+              cacheName: 'nautique-basemap',
               expiration: {
-                maxEntries: 200,
+                maxEntries: 400,
                 maxAgeSeconds: 60 * 60 * 24 * 14,
               },
             },

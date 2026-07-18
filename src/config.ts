@@ -60,11 +60,11 @@ export const fetchBins = {
 /** Named ski zones on Okanagan Lake near Kelowna. */
 export const zones: Zone[] = [
   {
-    id: 'kelowna-waterfront',
-    name: 'Kelowna Waterfront',
-    description: 'North arm / downtown — lake runs roughly N–S',
-    lat: 49.888,
-    lon: -119.504,
+    id: 'south-arm-elbow',
+    name: 'South Arm / Elbow',
+    description: 'South lake toward Okanagan Mountain — SW/NE shoreline',
+    lat: 49.82,
+    lon: -119.55,
   },
   {
     id: 'bennett-bridge',
@@ -74,15 +74,15 @@ export const zones: Zone[] = [
     lon: -119.52,
   },
   {
-    id: 'south-arm-elbow',
-    name: 'South Arm / Elbow',
-    description: 'Toward Okanagan Mountain — SW/NE shoreline',
-    lat: 49.82,
-    lon: -119.55,
+    id: 'kelowna-waterfront',
+    name: 'Kelowna Waterfront',
+    description: 'North arm / downtown — lake runs roughly N–S',
+    lat: 49.888,
+    lon: -119.504,
   },
 ]
 
-export const defaultZoneId = zones[0].id
+export const defaultZoneId = 'south-arm-elbow'
 
 /** YLW airport for optional METAR-style actuals cross-check. */
 export const ylwStation = {

@@ -7,34 +7,36 @@ type Props = {
 }
 
 export function ZoneSelector({ zones, selectedId, onChange }: Props) {
+  const selected = zones.find((z) => z.id === selectedId) ?? zones[0]
+
   return (
-    <div className="grid gap-2.5" role="radiogroup" aria-label="Ski location">
-      {zones.map((z) => {
-        const active = z.id === selectedId
-        return (
-          <button
-            key={z.id}
-            type="button"
-            role="radio"
-            aria-checked={active}
-            onClick={() => onChange(z.id)}
-            className={`min-h-16 rounded-2xl border-2 px-4 py-3.5 text-left transition ${
-              active
-                ? 'border-[var(--brass)] bg-[var(--hull)] text-[var(--deck)] shadow-md'
-                : 'border-[var(--line)] bg-[var(--card)] text-[var(--ink)]'
-            }`}
-          >
-            <div className="text-xl font-extrabold">{z.name}</div>
-            <div
-              className={`mt-0.5 text-base leading-snug ${
-                active ? 'text-[var(--brass-bright)]' : 'text-[var(--muted)]'
-              }`}
-            >
-              {z.description}
-            </div>
-          </button>
-        )
-      })}
-    </div>
+    <label className="block">
+      <span className="mb-1.5 block text-sm font-bold uppercase tracking-wide text-[var(--muted)]">
+        Ski spot
+      </span>
+      <div className="relative">
+        <select
+          value={selectedId}
+          onChange={(e) => onChange(e.target.value)}
+          className="min-h-12 w-full appearance-none rounded-xl border-2 border-[var(--line)] bg-[var(--card)] px-4 py-3 pr-10 text-lg font-extrabold text-[var(--ink)] shadow-sm"
+          aria-label="Ski location"
+        >
+          {zones.map((z) => (
+            <option key={z.id} value={z.id}>
+              {z.name}
+            </option>
+          ))}
+        </select>
+        <span
+          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--hull)]"
+          aria-hidden
+        >
+          ▾
+        </span>
+      </div>
+      {selected && (
+        <p className="mt-1.5 text-sm text-[var(--muted)]">{selected.description}</p>
+      )}
+    </label>
   )
 }

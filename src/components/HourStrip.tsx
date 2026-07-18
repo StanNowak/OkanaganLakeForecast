@@ -16,12 +16,71 @@ type Props = {
   hours: HourlyRating[]
 }
 
-function barColor(score: number): string {
-  if (score >= 80) return '#1f6b4a'
-  if (score >= 70) return '#3d6b7a'
-  if (score >= 50) return '#c4892a'
-  if (score >= 30) return '#b45309'
-  return '#c8102e'
+/** Icon + color for ski quality — not a fill bar (avoids “higher = more wind”). */
+function QualityIcon({ score }: { score: number }) {
+  const color = scoreColor(score)
+  // Glassy: calm circle · Good: soft wave · Fair: chop · Rough: X
+  if (score >= 80) {
+    return (
+      <svg width="36" height="36" viewBox="0 0 36 36" aria-hidden>
+        <circle cx="18" cy="18" r="12" fill="none" stroke={color} strokeWidth="3" />
+        <circle cx="18" cy="18" r="5" fill={color} />
+      </svg>
+    )
+  }
+  if (score >= 70) {
+    return (
+      <svg width="36" height="36" viewBox="0 0 36 36" aria-hidden>
+        <path
+          d="M4 20c4-6 8-6 12 0s8 6 12 0"
+          fill="none"
+          stroke={color}
+          strokeWidth="3"
+          strokeLinecap="round"
+        />
+        <path
+          d="M4 26c4-5 8-5 12 0s8 5 12 0"
+          fill="none"
+          stroke={color}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          opacity="0.55"
+        />
+      </svg>
+    )
+  }
+  if (score >= 50) {
+    return (
+      <svg width="36" height="36" viewBox="0 0 36 36" aria-hidden>
+        <path
+          d="M4 16c3 5 6-5 9 0s6-5 9 0 6-5 9 0"
+          fill="none"
+          stroke={color}
+          strokeWidth="3"
+          strokeLinecap="round"
+        />
+        <path
+          d="M4 24c3 5 6-5 9 0s6-5 9 0 6-5 9 0"
+          fill="none"
+          stroke={color}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          opacity="0.6"
+        />
+      </svg>
+    )
+  }
+  return (
+    <svg width="36" height="36" viewBox="0 0 36 36" aria-hidden>
+      <path
+        d="M10 10 L26 26 M26 10 L10 26"
+        fill="none"
+        stroke={color}
+        strokeWidth="3.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
 }
 
 export function HourStrip({ hours }: Props) {
@@ -39,7 +98,9 @@ export function HourStrip({ hours }: Props) {
   return (
     <section className="panel p-4">
       <h3 className="font-display text-4xl text-[var(--hull)]">Hour by hour</h3>
-      <p className="mt-1 text-lg text-[var(--muted)]">Tap a time for details</p>
+      <p className="mt-1 text-base text-[var(--muted)]">
+        Tap a time · green glass · amber fair · red rough
+      </p>
 
       <div className="scrollbar-none mt-4 flex gap-2 overflow-x-auto pb-1">
         {list.map((h) => {
@@ -49,25 +110,27 @@ export function HourStrip({ hours }: Props) {
               key={h.time}
               type="button"
               onClick={() => setSelected(h.time)}
-              className={`flex w-[4.4rem] shrink-0 flex-col items-center rounded-xl border-2 px-1 py-2 ${
+              className={`flex w-[4.6rem] shrink-0 flex-col items-center rounded-xl border-2 px-1 py-2.5 ${
                 on
                   ? 'border-[var(--hull)] bg-[var(--deck-deep)]'
                   : 'border-transparent bg-[var(--deck)]'
               }`}
             >
               <span className="text-sm font-bold text-[var(--muted)]">{formatHour(h.time)}</span>
-              <span
-                className="mt-1 h-16 w-9 rounded-full border border-[var(--line)]"
-                style={{
-                  background: `linear-gradient(to top, ${barColor(h.meanScore)} ${h.meanScore}%, #e8dcc4 ${h.meanScore}%)`,
-                }}
-                aria-hidden
-              />
+              <span className="mt-1.5 flex h-10 items-center justify-center">
+                <QualityIcon score={h.meanScore} />
+              </span>
               <span
                 className="font-display mt-1 text-3xl leading-none"
                 style={{ color: scoreColor(h.meanScore) }}
               >
                 {formatScore(h.meanScore)}
+              </span>
+              <span
+                className="mt-0.5 text-[11px] font-bold leading-tight"
+                style={{ color: scoreColor(h.meanScore) }}
+              >
+                {plainScoreLabel(h.meanScore)}
               </span>
             </button>
           )
@@ -76,7 +139,8 @@ export function HourStrip({ hours }: Props) {
 
       {active && (
         <div className="mt-4 rounded-2xl border border-[var(--line)] bg-[var(--deck)] p-4 text-[var(--ink)]">
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <QualityIcon score={active.meanScore} />
             <span className="font-display text-4xl text-[var(--hull)]">
               {formatHour(active.time)}
             </span>

@@ -6,11 +6,13 @@ import { HeroDecision } from './components/HeroDecision'
 import { HourStrip } from './components/HourStrip'
 import { MapView } from './components/MapView'
 import { PeriodTiles } from './components/PeriodTiles'
+import { WebcamGallery } from './components/WebcamGallery'
 import { ZoneSelector } from './components/ZoneSelector'
 import { buildForecast, type ForecastBundle } from './lib/forecast'
 import { loadFetchTable, type FetchTable } from './lib/fetchTable'
+import { fetchCurrentWindGrid, type WindGrid } from './lib/windField'
 
-type Tab = 'today' | 'recent'
+type View = 'forecast' | 'recent'
 
 export default function App() {
   const [zoneId, setZoneId] = useState(defaultZoneId)
@@ -19,9 +21,10 @@ export default function App() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [tab, setTab] = useState<Tab>('today')
+  const [view, setView] = useState<View>('forecast')
   const [showMap, setShowMap] = useState(false)
   const [showTech, setShowTech] = useState(false)
+  const [windGrid, setWindGrid] = useState<WindGrid | null>(null)
 
   const zone = useMemo(
     () => zones.find((z) => z.id === zoneId) ?? zones[0]!,
@@ -47,8 +50,15 @@ export default function App() {
     setLoading(true)
     setError(null)
     try {
-      const result = await buildForecast(zone, fetchTable)
+      const [result, grid] = await Promise.all([
+        buildForecast(zone, fetchTable),
+        fetchCurrentWindGrid().catch((e: unknown) => {
+          console.warn(e)
+          return null
+        }),
+      ])
       setBundle(result)
+      setWindGrid(grid)
       setSelectedDate((prev) => {
         if (prev && result.days.some((d) => d.date === prev)) return prev
         return result.days[0]?.date ?? null
@@ -75,96 +85,70 @@ export default function App() {
 
   return (
     <div className="mx-auto min-h-dvh max-w-lg px-4 pb-12 pt-[max(0.75rem,env(safe-area-inset-top))] sm:max-w-xl">
-      {/* Brand-first masthead — Nautique / Kelowna retro */}
-      <header className="panel-hull rise-in mb-4 overflow-hidden px-5 py-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="font-script text-3xl leading-none text-[var(--brass-bright)]">
-              Kelowwwwna
-            </p>
-            <h1 className="font-display mt-1 text-6xl leading-none tracking-[0.06em] text-[var(--deck)] sm:text-7xl">
-              GLASS
-            </h1>
-            <p className="mt-2 text-lg font-semibold text-[rgba(243,235,216,0.85)]">
-              Okanagan ski conditions
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => void refresh()}
-            disabled={loading || !fetchTable}
-            className="min-h-12 shrink-0 rounded-full border-2 border-[var(--brass)] bg-[rgba(243,235,216,0.08)] px-4 text-base font-bold text-[var(--deck)] disabled:opacity-50"
-          >
-            {loading ? '…' : 'Refresh'}
-          </button>
+      {/* Compact brand header */}
+      <header className="panel-hull rise-in mb-3 flex items-center justify-between gap-3 px-4 py-3">
+        <div>
+          <p className="font-script text-xl leading-none text-[var(--brass-bright)]">
+            Kelowwwwna
+          </p>
+          <h1 className="font-display text-4xl leading-none tracking-[0.06em] text-[var(--deck)]">
+            GLASS
+          </h1>
+          <p className="mt-0.5 text-sm font-medium text-[rgba(243,235,216,0.7)]">
+            Okanagan ski conditions
+          </p>
         </div>
-        <hr className="brand-rule mt-4" />
-        <p className="mt-3 text-base font-medium text-[rgba(243,235,216,0.75)]">
-          Big answer first. Take the boat out when it says GO.
-        </p>
+        <button
+          type="button"
+          onClick={() => void refresh()}
+          disabled={loading || !fetchTable}
+          className="min-h-11 shrink-0 rounded-full border-2 border-[var(--brass)] bg-[rgba(243,235,216,0.08)] px-3.5 text-sm font-bold text-[var(--deck)] disabled:opacity-50"
+        >
+          {loading ? '…' : 'Refresh'}
+        </button>
       </header>
 
-      <nav
-        className="panel mb-4 grid grid-cols-2 gap-1 p-1.5"
-        aria-label="Main"
-      >
-        <button
-          type="button"
-          onClick={() => setTab('today')}
-          className={`font-display min-h-14 rounded-xl text-2xl tracking-wide ${
-            tab === 'today'
-              ? 'bg-[var(--hull)] text-[var(--deck)]'
-              : 'text-[var(--muted)]'
-          }`}
-        >
-          Forecast
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab('recent')}
-          className={`font-display min-h-14 rounded-xl text-2xl tracking-wide ${
-            tab === 'recent'
-              ? 'bg-[var(--hull)] text-[var(--deck)]'
-              : 'text-[var(--muted)]'
-          }`}
-        >
-          Recent
-        </button>
-      </nav>
-
-      <section className="mb-4">
-        <h2 className="font-display mb-2 text-3xl text-[var(--hull)]">Where are you skiing?</h2>
-        <ZoneSelector zones={zones} selectedId={zoneId} onChange={setZoneId} />
+      {/* Spot + compact controls — then GO/SKIP front and center */}
+      <div className="mb-3 flex flex-wrap items-end gap-3">
+        <div className="min-w-0 flex-1">
+          <ZoneSelector zones={zones} selectedId={zoneId} onChange={setZoneId} />
+        </div>
         <button
           type="button"
           onClick={() => setShowMap((v) => !v)}
-          className="mt-2 min-h-12 w-full text-lg font-bold text-[var(--lake)] underline-offset-4 hover:underline"
+          className="mb-0.5 min-h-11 shrink-0 rounded-xl border-2 border-[var(--line)] bg-[var(--card)] px-3 text-sm font-bold text-[var(--lake)]"
         >
-          {showMap ? 'Hide map' : 'Show map'}
+          {showMap ? 'Hide map' : 'Map'}
         </button>
-        {showMap && (
-          <div className="mt-2 overflow-hidden rounded-2xl border-2 border-[var(--line)]">
-            <MapView zones={zones} selectedId={zoneId} onSelect={setZoneId} />
-          </div>
-        )}
-      </section>
+      </div>
+
+      {showMap && (
+        <div className="mb-3 overflow-hidden rounded-2xl border-2 border-[var(--line)]">
+          <MapView
+            zones={zones}
+            selectedId={zoneId}
+            onSelect={setZoneId}
+            windGrid={windGrid}
+          />
+        </div>
+      )}
 
       {error && (
         <div
           role="alert"
-          className="mb-4 rounded-2xl border-2 border-[var(--signal)] bg-[#fde8eb] px-4 py-3 text-lg font-bold text-[#8e0c20]"
+          className="mb-3 rounded-2xl border-2 border-[var(--signal)] bg-[#fde8eb] px-4 py-3 text-lg font-bold text-[#8e0c20]"
         >
           {error}
         </div>
       )}
 
       {loading && !bundle && (
-        <div className="panel p-10 text-center text-2xl font-bold text-[var(--muted)]">
+        <div className="panel p-8 text-center text-xl font-bold text-[var(--muted)]">
           Loading forecast…
         </div>
       )}
 
-      {bundle && tab === 'today' && selectedDay && (
+      {bundle && view === 'forecast' && selectedDay && (
         <div className="space-y-4">
           <HeroDecision day={selectedDay} nowHour={nowHour} />
 
@@ -185,10 +169,10 @@ export default function App() {
             open={showTech}
             onToggle={(e) => setShowTech((e.target as HTMLDetailsElement).open)}
           >
-            <summary className="cursor-pointer text-xl font-bold text-[var(--hull)]">
+            <summary className="cursor-pointer text-lg font-bold text-[var(--hull)]">
               More details
             </summary>
-            <p className="mt-3 text-lg leading-relaxed text-[var(--muted)]">
+            <p className="mt-3 text-base leading-relaxed text-[var(--muted)]">
               Score combines wind speed, wind direction (how far waves can build across the lake),
               gusts, and whitecaps. Higher is glassier.
             </p>
@@ -200,16 +184,42 @@ export default function App() {
               Updated {new Date(bundle.generatedAt).toLocaleString()}
             </p>
           </details>
+
+          <WebcamGallery />
+
+          {/* Recent = modeled “what just happened” for threshold tuning — tucked away */}
+          <button
+            type="button"
+            onClick={() => setView('recent')}
+            className="w-full text-center text-sm font-bold text-[var(--muted)] underline-offset-2 hover:underline"
+          >
+            Recent modeled mornings →
+          </button>
         </div>
       )}
 
-      {bundle && tab === 'recent' && <ActualsView pastHours={bundle.pastHours} />}
+      {bundle && view === 'recent' && (
+        <div className="space-y-4">
+          <button
+            type="button"
+            onClick={() => setView('forecast')}
+            className="text-base font-bold text-[var(--lake)] underline-offset-2 hover:underline"
+          >
+            ← Back to forecast
+          </button>
+          <p className="text-base text-[var(--muted)]">
+            How the model scored the last couple of days — compare with mornings you actually skied.
+          </p>
+          <ActualsView pastHours={bundle.pastHours} />
+          <WebcamGallery />
+        </div>
+      )}
 
       <footer className="mt-10 text-center">
         <hr className="brand-rule mb-4" />
         <p className="font-script text-2xl text-[var(--hull)]">See you on the glass</p>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          Wind © Open-Meteo · Add to Home Screen for the app
+          Wind © Open-Meteo · Cams via COSA / Global / Castanet
         </p>
       </footer>
     </div>
