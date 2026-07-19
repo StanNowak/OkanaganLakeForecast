@@ -42,6 +42,8 @@ export type HourlyRating = {
 
 export type PeriodRating = {
   label: 'morning' | 'afternoon'
+  /** Best contiguous sub-window in the period (what you’d actually ski). */
+  bestScore: number
   worstScore: number
   meanScore: number
   confidence: number
@@ -207,6 +209,19 @@ function rateHour(
   }
 }
 
+/** Best mean score over a contiguous `windowSize` hours (or shorter if needed). */
+function bestRollingScore(hours: HourlyRating[], windowSize: number): number {
+  if (hours.length === 0) return NaN
+  const w = Math.min(windowSize, hours.length)
+  let best = -Infinity
+  for (let i = 0; i <= hours.length - w; i++) {
+    const mean =
+      hours.slice(i, i + w).reduce((s, h) => s + h.meanScore, 0) / w
+    if (mean > best) best = mean
+  }
+  return best
+}
+
 function periodFromHours(
   hours: HourlyRating[],
   label: 'morning' | 'afternoon',
@@ -218,6 +233,7 @@ function periodFromHours(
   if (slice.length === 0) {
     return {
       label,
+      bestScore: NaN,
       worstScore: NaN,
       meanScore: NaN,
       confidence: 0,
@@ -225,14 +241,16 @@ function periodFromHours(
       hours: [],
     }
   }
-  // Worst sustained hour — one bad hour ruins a ski set
   const worst = slice.reduce((a, b) => (a.meanScore <= b.meanScore ? a : b))
   const meanScore = slice.reduce((s, h) => s + h.meanScore, 0) / slice.length
   const confidence =
     slice.reduce((s, h) => s + h.confidence, 0) / slice.length
   const pGlassy = slice.reduce((s, h) => s + h.pGlassy, 0) / slice.length
+  // Tile / day decision: best ~3h block you’d actually ski, not the worst hour of a long period
+  const bestScore = bestRollingScore(slice, skiThresholds.periodBestHours)
   return {
     label,
+    bestScore,
     worstScore: worst.meanScore,
     meanScore,
     confidence,
@@ -241,39 +259,58 @@ function periodFromHours(
   }
 }
 
+function windowRank(a: NonNullable<BestWindow>): number {
+  // Prefer glassy quality over a long mediocre overnight run.
+  const confBonus = a.confidence >= skiThresholds.windowConfidenceMin ? 5 : 0
+  return a.meanScore * 100 + a.minScore * 10 + a.hours + confBonus
+}
+
 export function findBestWindow(hours: HourlyRating[]): BestWindow {
-  const { windowScoreMin, windowConfidenceMin } = skiThresholds
+  const { windowScoreMin, skiWindowHours } = skiThresholds
+  // Boat daylight only — never recommend midnight–dawn.
+  const skiHours = [...hours]
+    .filter(
+      (h) =>
+        h.localHour >= skiWindowHours.start &&
+        h.localHour <= skiWindowHours.end,
+    )
+    .sort((a, b) => a.time.localeCompare(b.time))
+
   let best: BestWindow = null
   let runStart = -1
 
   const flush = (endExclusive: number) => {
     if (runStart < 0) return
-    const run = hours.slice(runStart, endExclusive)
-    if (run.length === 0) return
+    const run = skiHours.slice(runStart, endExclusive)
+    if (run.length < 2) return
+    const first = run[0]!
+    const last = run[run.length - 1]!
+    if (
+      first.localHour < skiWindowHours.start ||
+      last.localHour > skiWindowHours.end
+    ) {
+      return
+    }
     const meanScore = run.reduce((s, h) => s + h.meanScore, 0) / run.length
     const minScore = Math.min(...run.map((h) => h.meanScore))
     const confidence = run.reduce((s, h) => s + h.confidence, 0) / run.length
     const candidate: NonNullable<BestWindow> = {
-      start: run[0]!.time,
-      end: run[run.length - 1]!.time,
+      start: first.time,
+      end: last.time,
       hours: run.length,
       meanScore,
       minScore,
       confidence,
     }
-    if (
-      !best ||
-      candidate.hours > best.hours ||
-      (candidate.hours === best.hours && candidate.meanScore > best.meanScore)
-    ) {
+    if (!best || windowRank(candidate) > windowRank(best)) {
       best = candidate
     }
   }
 
-  for (let i = 0; i < hours.length; i++) {
-    const h = hours[i]!
-    const ok =
-      h.meanScore >= windowScoreMin && h.confidence >= windowConfidenceMin
+  for (let i = 0; i < skiHours.length; i++) {
+    const h = skiHours[i]!
+    // Score gates the window; low confidence no longer hides a clearly glassy afternoon.
+    const ok = h.meanScore >= windowScoreMin
     if (ok) {
       if (runStart < 0) runStart = i
     } else {
@@ -281,7 +318,7 @@ export function findBestWindow(hours: HourlyRating[]): BestWindow {
       runStart = -1
     }
   }
-  flush(hours.length)
+  flush(skiHours.length)
   return best
 }
 
@@ -307,11 +344,14 @@ function buildDays(hours: HourlyRating[]): DayForecast[] {
         skiThresholds.afternoonHours,
       )
       const bestWindow = findBestWindow(dayHours)
-      // Day score: prefer morning worst (ski mornings matter most), blend with afternoon
-      const dayScore = Number.isFinite(morning.worstScore)
-        ? 0.65 * morning.worstScore +
-          0.35 * (Number.isFinite(afternoon.worstScore) ? afternoon.worstScore : morning.worstScore)
-        : afternoon.worstScore
+      // Day score: prefer morning ski block, blend with afternoon ski block
+      const dayScore = Number.isFinite(morning.bestScore)
+        ? 0.65 * morning.bestScore +
+          0.35 *
+            (Number.isFinite(afternoon.bestScore)
+              ? afternoon.bestScore
+              : morning.bestScore)
+        : afternoon.bestScore
       const dayConfidence =
         (morning.confidence * morning.hours.length +
           afternoon.confidence * afternoon.hours.length) /

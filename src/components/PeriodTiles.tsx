@@ -53,13 +53,13 @@ export function PeriodTiles({ day }: Props) {
     <div className="grid grid-cols-2 gap-3">
       <Tile
         title="Morning"
-        score={day.morning.worstScore}
+        score={day.morning.bestScore}
         confidence={day.morning.confidence}
         pGlassy={day.morning.pGlassy}
       />
       <Tile
         title="Afternoon"
-        score={day.afternoon.worstScore}
+        score={day.afternoon.bestScore}
         confidence={day.afternoon.confidence}
         pGlassy={day.afternoon.pGlassy}
       />

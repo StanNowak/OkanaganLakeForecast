@@ -63,14 +63,14 @@ export function DayCard({ day, selected, onSelect }: Props) {
 
       <div className="mt-3 grid grid-cols-2 gap-2">
         <PeriodChip
-          label="Morning (worst hr)"
-          score={day.morning.worstScore}
+          label="Morning"
+          score={day.morning.bestScore}
           confidence={day.morning.confidence}
           pGlassy={day.morning.pGlassy}
         />
         <PeriodChip
-          label="Afternoon (worst hr)"
-          score={day.afternoon.worstScore}
+          label="Afternoon"
+          score={day.afternoon.bestScore}
           confidence={day.afternoon.confidence}
           pGlassy={day.afternoon.pGlassy}
         />

@@ -72,6 +72,18 @@ export default defineConfig({
             },
           },
           {
+            urlPattern: /^https:\/\/mesonet\.agron\.iastate\.edu\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'ylw-asos',
+              expiration: {
+                maxEntries: 16,
+                maxAgeSeconds: 60 * 15,
+              },
+              networkTimeoutSeconds: 8,
+            },
+          },
+          {
             urlPattern: /^https:\/\/tiles\.openfreemap\.org\/.*/i,
             handler: 'CacheFirst',
             options: {

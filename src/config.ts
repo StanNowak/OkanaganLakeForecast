@@ -23,8 +23,12 @@ export const skiThresholds = {
   glassyScore: 80,
   /** Minimum score for a usable ski window hour */
   windowScoreMin: 70,
-  /** Minimum confidence (0-1) for a usable ski window hour */
+  /** Soft preference for confidence when ranking windows (not a hard gate). */
   windowConfidenceMin: 0.45,
+  /** Only search “best time” in boat-able daylight hours (local). */
+  skiWindowHours: { start: 6, end: 20 },
+  /** Rolling hours used for morning/afternoon tile quality. */
+  periodBestHours: 3,
   morningHours: { start: 6, end: 11 },
   afternoonHours: { start: 12, end: 18 },
 } as const
@@ -98,11 +102,16 @@ export const zones: Zone[] = [
 
 export const defaultZoneId = 'south-arm-elbow'
 
-/** YLW airport for optional METAR-style actuals cross-check. */
+/** Kelowna Airport ASOS/METAR (Iowa Environmental Mesonet, CORS-friendly). */
 export const ylwStation = {
   name: 'Kelowna Airport (YLW)',
+  icao: 'CYLW',
+  network: 'CA_BC_ASOS',
   lat: 49.9561,
   lon: -119.3778,
+  /** Hours of hourly observations to pull for Recent. */
+  lookbackHours: 48,
+  asosUrl: 'https://mesonet.agron.iastate.edu/cgi-bin/request/asos.py',
 }
 
 export const KN_TO_MS = 0.514444

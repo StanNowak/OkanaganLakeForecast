@@ -11,6 +11,7 @@ import { ZoneSelector } from './components/ZoneSelector'
 import { buildForecast, type ForecastBundle } from './lib/forecast'
 import { loadFetchTable, type FetchTable } from './lib/fetchTable'
 import { fetchCurrentWindGrid, type WindGrid } from './lib/windField'
+import { fetchYlwActuals, type AirportActuals } from './lib/ylwActuals'
 
 type View = 'forecast' | 'recent'
 
@@ -25,6 +26,8 @@ export default function App() {
   const [showMap, setShowMap] = useState(false)
   const [showTech, setShowTech] = useState(false)
   const [windGrid, setWindGrid] = useState<WindGrid | null>(null)
+  const [airport, setAirport] = useState<AirportActuals | null>(null)
+  const [airportError, setAirportError] = useState<string | null>(null)
 
   const zone = useMemo(
     () => zones.find((z) => z.id === zoneId) ?? zones[0]!,
@@ -50,15 +53,26 @@ export default function App() {
     setLoading(true)
     setError(null)
     try {
-      const [result, grid] = await Promise.all([
+      const [result, grid, ylw] = await Promise.all([
         buildForecast(zone, fetchTable),
         fetchCurrentWindGrid().catch((e: unknown) => {
           console.warn(e)
           return null
         }),
+        fetchYlwActuals().catch((e: unknown) => {
+          console.warn(e)
+          return e instanceof Error ? e : new Error(String(e))
+        }),
       ])
       setBundle(result)
       setWindGrid(grid)
+      if (ylw instanceof Error) {
+        setAirport(null)
+        setAirportError(ylw.message)
+      } else {
+        setAirport(ylw)
+        setAirportError(null)
+      }
       setSelectedDate((prev) => {
         if (prev && result.days.some((d) => d.date === prev)) return prev
         return result.days[0]?.date ?? null
@@ -80,7 +94,18 @@ export default function App() {
     if (!bundle || !selectedDay) return null
     const today = bundle.days[0]
     if (!today || selectedDay.date !== today.date) return null
-    return today.hours[0] ?? null
+    const vancouverHour = Number(
+      new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Vancouver',
+        hour: '2-digit',
+        hour12: false,
+      }).format(new Date()),
+    )
+    return (
+      today.hours.find((h) => h.localHour === vancouverHour) ??
+      today.hours.find((h) => h.localHour >= vancouverHour) ??
+      null
+    )
   }, [bundle, selectedDay])
 
   return (
@@ -150,7 +175,11 @@ export default function App() {
 
       {bundle && view === 'forecast' && selectedDay && (
         <div className="space-y-4">
-          <HeroDecision day={selectedDay} nowHour={nowHour} />
+          <HeroDecision
+            day={selectedDay}
+            nowHour={nowHour}
+            isToday={selectedDay.date === bundle.days[0]?.date}
+          />
 
           <div>
             <h2 className="font-display mb-2 text-3xl text-[var(--hull)]">Pick a day</h2>
@@ -193,7 +222,7 @@ export default function App() {
             onClick={() => setView('recent')}
             className="w-full text-center text-sm font-bold text-[var(--muted)] underline-offset-2 hover:underline"
           >
-            Recent modeled mornings →
+            Recent mornings + airport wind →
           </button>
         </div>
       )}
@@ -208,9 +237,13 @@ export default function App() {
             ← Back to forecast
           </button>
           <p className="text-base text-[var(--muted)]">
-            How the model scored the last couple of days — compare with mornings you actually skied.
+            Model score at your spot, checked against real Kelowna Airport winds.
           </p>
-          <ActualsView pastHours={bundle.pastHours} />
+          <ActualsView
+            pastHours={bundle.pastHours}
+            airport={airport}
+            airportError={airportError}
+          />
           <WebcamGallery />
         </div>
       )}
@@ -219,7 +252,7 @@ export default function App() {
         <hr className="brand-rule mb-4" />
         <p className="font-script text-2xl text-[var(--hull)]">See you on the glass</p>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          Wind © Open-Meteo · Cams via COSA / Global / Castanet
+          Wind © Open-Meteo · Airport METAR via IEM · Cams via COSA / Global / Castanet
         </p>
       </footer>
     </div>

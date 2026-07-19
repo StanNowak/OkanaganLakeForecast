@@ -5,11 +5,25 @@ import {
   type Decision,
 } from '../lib/decision'
 import type { BestWindow, DayForecast, HourlyRating } from '../lib/forecast'
-import { formatDir, formatHour, formatKn } from '../lib/format'
+import { formatDayLabel, formatDir, formatHour, formatKn } from '../lib/format'
+import { skiThresholds } from '../config'
 
 type Props = {
   day: DayForecast
   nowHour?: HourlyRating | null
+  isToday?: boolean
+}
+
+function usableWindow(w: BestWindow): BestWindow {
+  if (!w) return null
+  const startHour = Number((w.start.split('T')[1] ?? '99').slice(0, 2))
+  if (
+    startHour < skiThresholds.skiWindowHours.start ||
+    startHour > skiThresholds.skiWindowHours.end
+  ) {
+    return null
+  }
+  return w
 }
 
 function windowText(w: BestWindow): string {
@@ -17,13 +31,30 @@ function windowText(w: BestWindow): string {
   return `${formatHour(w.start)} – ${formatHour(w.end)}`
 }
 
-export function HeroDecision({ day, nowHour }: Props) {
-  const score = nowHour?.meanScore ?? day.morning.worstScore ?? day.dayScore
-  const confidence = nowHour?.confidence ?? day.morning.confidence ?? day.dayConfidence
-  const pGlassy = nowHour?.pGlassy ?? day.morning.pGlassy ?? day.dayPGlassy
+export function HeroDecision({ day, nowHour, isToday = false }: Props) {
+  const bestWindow = usableWindow(day.bestWindow)
+  const periodScore = Number.isFinite(day.morning.bestScore)
+    ? Math.max(
+        day.morning.bestScore,
+        Number.isFinite(day.afternoon.bestScore) ? day.afternoon.bestScore : 0,
+      )
+    : day.afternoon.bestScore
+
+  // Right now → current hour. Otherwise prefer the daytime ski window, not overnight leftovers.
+  const score =
+    nowHour?.meanScore ?? bestWindow?.meanScore ?? periodScore ?? day.dayScore
+  const confidence =
+    nowHour?.confidence ?? bestWindow?.confidence ?? day.dayConfidence
+  const pGlassy = nowHour?.pGlassy ?? day.dayPGlassy
   const decision: Decision = goDecision(score, confidence, pGlassy)
   const copy = decisionCopy(decision)
-  const wind = nowHour ?? day.hours.find((h) => h.localHour >= 6) ?? day.hours[0]
+  const wind =
+    nowHour ??
+    day.hours.find(
+      (h) => bestWindow && h.time >= bestWindow.start && h.time <= bestWindow.end,
+    ) ??
+    day.hours.find((h) => h.localHour >= skiThresholds.skiWindowHours.start) ??
+    day.hours[0]
 
   const toneClass =
     copy.tone === 'go'
@@ -32,6 +63,8 @@ export function HeroDecision({ day, nowHour }: Props) {
         ? 'decision-maybe'
         : 'decision-skip text-white'
 
+  const heading = nowHour ? 'Right now' : isToday ? 'Today' : formatDayLabel(day.date)
+
   return (
     <section
       className={`rise-in rounded-[1.4rem] p-5 shadow-lg ring-2 ring-[rgba(184,149,108,0.4)] sm:p-6 ${toneClass}`}
@@ -39,7 +72,7 @@ export function HeroDecision({ day, nowHour }: Props) {
     >
       <div className="flex items-center justify-between gap-2">
         <p className="text-lg font-bold uppercase tracking-[0.18em] opacity-90">
-          {nowHour ? 'Right now' : 'Today'}
+          {heading}
         </p>
         <span className="font-script text-2xl opacity-90">glass check</span>
       </div>
@@ -53,7 +86,7 @@ export function HeroDecision({ day, nowHour }: Props) {
             Best time
           </div>
           <div className="font-display mt-1 text-4xl leading-none sm:text-5xl">
-            {windowText(day.bestWindow)}
+            {windowText(bestWindow)}
           </div>
         </div>
         <div className="rounded-2xl bg-black/15 px-4 py-3">
